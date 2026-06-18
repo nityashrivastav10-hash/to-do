@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>tasks.js — To-Do List</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;}
+  :root{
+    --bg-deep:#1B1C26;
+    --bg-panel:#23252F;
+    --bg-panel-2:#2B2D3A;
+    --text-primary:#E8E6F0;
+    --text-dim:#80809A;
+    --accent-amber:#FFB454;
+    --accent-cyan:#5CD6C0;
+    --accent-coral:#FF6B6B;
+    --line-number:#4A4C63;
+    --border:#383A52;
+  }
+  body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg-deep);
+    background-image:
+      radial-gradient(circle at 18% -10%, rgba(255,180,84,0.10), transparent 40%),
+      radial-gradient(circle at 88% 110%, rgba(92,214,192,0.10), transparent 40%);
+    font-family:'Inter', sans-serif;
+    color:var(--text-primary);
+    display:flex;
+    justify-content:center;
+    padding:48px 20px;
+  }
+  .editor{
+    width:100%;
+    max-width:620px;
+    background:var(--bg-panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,0.55);
+    overflow:hidden;
+  }
+  .titlebar{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:14px 18px;
+    background:var(--bg-panel-2);
+    border-bottom:1px solid var(--border);
+  }
+  .dots{display:flex;gap:7px;}
+  .dots span{width:11px;height:11px;border-radius:50%;display:inline-block;}
+  .dots span:nth-child(1){background:var(--accent-coral);}
+  .dots span:nth-child(2){background:var(--accent-amber);}
+  .dots span:nth-child(3){background:var(--accent-cyan);}
+  .filename{font-family:'JetBrains Mono', monospace;font-size:13px;color:var(--text-dim);flex:1;}
+  .counter{font-family:'JetBrains Mono', monospace;font-size:12px;color:var(--accent-amber);white-space:nowrap;}
+
+  .tabs{display:flex;gap:6px;padding:14px 18px 0;flex-wrap:wrap;}
+  .tab{
+    font-family:'JetBrains Mono', monospace;
+    font-size:13px;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    cursor:pointer;
+    padding:6px 10px;
+    border-radius:6px;
+    transition:color .15s, background .15s;
+  }
+  .tab:hover{color:var(--text-primary);}
+  .tab.active{color:var(--bg-deep);background:var(--accent-cyan);}
+
+  .tab:focus-visible,
+  .check:focus-visible,
+  .delete-btn:focus-visible,
+  #taskInput:focus-visible,
+  .add-btn:focus-visible,
+  .clear-btn:focus-visible{
+    outline:2px solid var(--accent-amber);
+    outline-offset:2px;
+  }
+
+  .input-row{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:18px;
+    border-bottom:1px solid var(--border);
+  }
+  .prompt{font-family:'JetBrains Mono', monospace;color:var(--accent-amber);font-weight:600;}
+  #taskInput{
+    flex:1;
+    min-width:0;
+    background:transparent;
+    border:none;
+    border-bottom:1px solid var(--border);
+    color:var(--text-primary);
+    font-family:'JetBrains Mono', monospace;
+    font-size:14px;
+    padding:6px 2px;
+  }
+  #taskInput::placeholder{color:var(--text-dim);}
+  #taskInput:focus{outline:none;border-bottom-color:var(--accent-cyan);}
+  .add-btn{
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    font-weight:600;
+    background:var(--accent-amber);
+    color:var(--bg-deep);
+    border:none;
+    border-radius:6px;
+    padding:8px 12px;
+    cursor:pointer;
+    flex-shrink:0;
+  }
+  .add-btn:hover{filter:brightness(1.1);}
+
+  .task-list{list-style:none;margin:0;padding:0;max-height:50vh;overflow-y:auto;}
+  .task-line{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 18px;
+    border-bottom:1px solid var(--border);
+    transition:background .15s;
+  }
+  .task-line:hover{background:var(--bg-panel-2);}
+  .line-num{font-family:'JetBrains Mono', monospace;font-size:12px;color:var(--line-number);width:22px;text-align:right;flex-shrink:0;}
+  .check{
+    font-family:'JetBrains Mono', monospace;
+    background:none;
+    border:none;
+    color:var(--text-dim);
+    cursor:pointer;
+    font-size:14px;
+    padding:0;
+    flex-shrink:0;
+  }
+  .task-line.completed .check{color:var(--accent-cyan);}
+  .task-text{flex:1;min-width:0;font-size:14px;word-break:break-word;}
+  .task-line.completed .task-text{color:var(--text-dim);text-decoration:line-through;}
+  .task-line.completed .task-text::before{content:'// ';text-decoration:none;}
+  .edit-input{
+    flex:1;
+    min-width:0;
+    font-family:'Inter', sans-serif;
+    font-size:14px;
+    background:var(--bg-deep);
+    border:1px solid var(--accent-cyan);
+    border-radius:4px;
+    color:var(--text-primary);
+    padding:4px 8px;
+  }
+  .edit-input:focus{outline:none;}
+  .delete-btn{
+    font-family:'JetBrains Mono', monospace;
+    background:none;
+    border:none;
+    color:var(--accent-coral);
+    font-size:16px;
+    line-height:1;
+    cursor:pointer;
+    opacity:.35;
+    transition:opacity .15s;
+    flex-shrink:0;
+    padding:0 4px;
+  }
+  .task-line:hover .delete-btn,
+  .delete-btn:focus-visible{opacity:1;}
+
+  .empty-state{
+    display:none;
+    padding:32px 18px;
+    text-align:center;
+    font-family:'JetBrains Mono', monospace;
+    color:var(--text-dim);
+    font-size:13px;
+  }
+
+  .footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:14px 18px;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    color:var(--text-dim);
+  }
+  .clear-btn{
+    background:none;
+    border:none;
+    color:var(--accent-coral);
+    cursor:pointer;
+    font-family:'JetBrains Mono', monospace;
+    font-size:12px;
+    padding:0;
+  }
+  .clear-btn:hover{text-decoration:underline;}
+
+  @media (max-width:480px){
+    body{padding:24px 12px;}
+    .titlebar,.tabs,.input-row,.footer{padding-left:14px;padding-right:14px;}
+    .task-line{padding-left:14px;padding-right:14px;}
+    .filename{display:none;}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;}
+  }
+</style>
+</head>
+<body>
+  <main class="editor">
+    <div class="titlebar">
+      <div class="dots" aria-hidden="true"><span></span><span></span><span></span></div>
+      <div class="filename">tasks.js</div>
+      <div class="counter" id="counter">0 active</div>
+    </div>
+
+    <nav class="tabs" id="filterTabs" aria-label="Filter tasks">
+      <button class="tab active" data-filter="all" type="button">all()</button>
+      <button class="tab" data-filter="active" type="button">active()</button>
+      <button class="tab" data-filter="completed" type="button">completed()</button>
+    </nav>
+
+    <form class="input-row" id="addForm">
+      <span class="prompt" aria-hidden="true">&gt;</span>
+      <input type="text" id="taskInput" placeholder="type a task, hit enter..." autocomplete="off" maxlength="140" aria-label="New task">
+      <button type="submit" class="add-btn">add</button>
+    </form>
+
+    <ul class="task-list" id="taskList"></ul>
+    <p class="empty-state" id="emptyState">// no tasks yet — add one above</p>
+
+    <div class="footer">
+      <span id="stats">0 total</span>
+      <button class="clear-btn" id="clearCompleted" type="button">clear completed</button>
+    </div>
+  </main>
+
+<script>
+(function(){
+  'use strict';
+
+  const STORAGE_KEY = 'todo-js-tasks-v1';
+  let tasks = [];
+  let filter = 'all';
+  let nextId = 1;
+
+  const els = {
+    list: document.getElementById('taskList'),
+    empty: document.getElementById('emptyState'),
+    counter: document.getElementById('counter'),
+    stats: document.getElementById('stats'),
+    tabs: document.getElementById('filterTabs'),
+    form: document.getElementById('addForm'),
+    input: document.getElementById('taskInput'),
+    clearBtn: document.getElementById('clearCompleted')
+  };
+
+  // ---------- Persistence (localStorage) ----------
+  function loadTasks(){
+    try{
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const parsed = JSON.parse(raw);
+        tasks = Array.isArray(parsed.tasks) ? parsed.tasks : [];
+        nextId = parsed.nextId || (tasks.length ? Math.max(...tasks.map(t => t.id)) + 1 : 1);
+      }
+    }catch(err){
+      console.warn('Could not load tasks from localStorage:', err);
+      tasks = [];
+    }
+  }
+
+  function saveTasks(){
+    try{
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks, nextId }));
+    }catch(err){
+      console.warn('Could not save tasks to localStorage:', err);
+    }
+  }
+
+  // ---------- CRUD ----------
+  function addTask(rawText){
+    const text = rawText.trim();
+    if(!text) return;
+    tasks.push({ id: nextId++, text, completed: false, createdAt: Date.now() });
+    saveTasks();
+    render();
+  }
+
+  function deleteTask(id){
+    tasks = tasks.filter(t => t.id !== id);
+    saveTasks();
+    render();
+  }
+
+  function toggleTask(id){
+    const t = tasks.find(t => t.id === id);
+    if(t){ t.completed = !t.completed; saveTasks(); render(); }
+  }
+
+  function editTask(id, rawText){
+    const t = tasks.find(t => t.id === id);
+    if(!t) return;
+    const text = rawText.trim();
+    if(text) t.text = text;
+    saveTasks();
+    render();
+  }
+
+  function clearCompleted(){
+    tasks = tasks.filter(t => !t.completed);
+    saveTasks();
+    render();
+  }
+
+  // ---------- Filtering ----------
+  function getFiltered(){
+    if(filter === 'active') return tasks.filter(t => !t.completed);
+    if(filter === 'completed') return tasks.filter(t => t.completed);
+    return tasks;
+  }
+
+  // ---------- Rendering (dynamic DOM creation) ----------
+  function render(){
+    const filtered = getFiltered();
+    els.list.innerHTML = '';
+
+    filtered.forEach((t, idx) => {
+      const li = document.createElement('li');
+      li.className = 'task-line' + (t.completed ? ' completed' : '');
+      li.dataset.id = t.id;
+
+      const lineNum = document.createElement('span');
+      lineNum.className = 'line-num';
+      lineNum.textContent = String(idx + 1).padStart(2, '0');
+
+      const check = document.createElement('button');
+      check.type = 'button';
+      check.className = 'check';
+      check.setAttribute('aria-label', t.completed ? 'Mark as active' : 'Mark as complete');
+      check.textContent = t.completed ? '[x]' : '[ ]';
+
+      const text = document.createElement('span');
+      text.className = 'task-text';
+      text.textContent = t.text;
+      text.title = 'Double-click to edit';
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'delete-btn';
+      del.setAttribute('aria-label', 'Delete task');
+      del.textContent = '×';
+
+      li.append(lineNum, check, text, del);
+      els.list.appendChild(li);
+    });
+
+    if(tasks.length === 0){
+      els.empty.textContent = '// no tasks yet — add one above';
+      els.empty.style.display = 'block';
+    }else if(filtered.length === 0){
+      els.empty.textContent = filter === 'active'
+        ? '// nothing active — nice work'
+        : '// nothing completed yet';
+      els.empty.style.display = 'block';
+    }else{
+      els.empty.style.display = 'none';
+    }
+
+    updateCounters();
+  }
+
+  function updateCounters(){
+    const total = tasks.length;
+    const activeCount = tasks.filter(t => !t.completed).length;
+    const completedCount = total - activeCount;
+    els.counter.textContent = `${activeCount} active`;
+    els.stats.textContent = `${total} total · ${activeCount} active · ${completedCount} done`;
+  }
+
+  // ---------- Event delegation ----------
+  els.list.addEventListener('click', function(e){
+    const li = e.target.closest('.task-line');
+    if(!li) return;
+    const id = Number(li.dataset.id);
+    if(e.target.classList.contains('check')){
+      toggleTask(id);
+    }else if(e.target.classList.contains('delete-btn')){
+      deleteTask(id);
+    }
+  });
+
+  els.list.addEventListener('dblclick', function(e){
+    const textEl = e.target.closest('.task-text');
+    if(!textEl) return;
+    const li = textEl.closest('.task-line');
+    const id = Number(li.dataset.id);
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'edit-input';
+    input.maxLength = 140;
+    input.value = textEl.textContent;
+    textEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    let committed = false;
+    function commit(){
+      if(committed) return;
+      committed = true;
+      editTask(id, input.value);
+    }
+    input.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter'){ commit(); }
+      else if(ev.key === 'Escape'){ committed = true; render(); }
+    });
+    input.addEventListener('blur', commit);
+  });
+
+  els.form.addEventListener('submit', function(e){
+    e.preventDefault();
+    addTask(els.input.value);
+    els.input.value = '';
+    els.input.focus();
+  });
+
+  els.tabs.addEventListener('click', function(e){
+    const btn = e.target.closest('.tab');
+    if(!btn) return;
+    filter = btn.dataset.filter;
+    Array.from(els.tabs.querySelectorAll('.tab')).forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  els.clearBtn.addEventListener('click', clearCompleted);
+
+  // ---------- Init ----------
+  loadTasks();
+  render();
+})();
+</script>
+</body>
+</html>
